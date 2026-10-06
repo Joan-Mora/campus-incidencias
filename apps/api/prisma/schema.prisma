@@ -1,0 +1,264 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pg_trgm, unaccent, vector]
+}
+
+enum Role {
+  STUDENT
+  TECHNICIAN
+  SUPERVISOR
+}
+
+enum SpaceType {
+  CLASSROOM
+  LAB
+  BATHROOM
+  COMMON
+  OFFICE
+}
+
+enum Category {
+  ELECTRICAL
+  LIGHTING
+  WATER_LEAK
+  STRUCTURAL
+  SANITARY
+  FURNITURE
+  COSMETIC
+}
+
+enum RiskLevel {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum IncidentStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+  VERIFIED
+}
+
+enum PriorityLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum HistoryReason {
+  MANUAL
+  AUTO_ESCALATION
+  CLUSTER_PROPAGATION
+}
+
+enum EventType {
+  CREATED
+  PRIORITY_CHANGED
+  GROUPED
+  UNGROUPED
+  ASSIGNED
+  SLA_WARNING
+  SLA_BREACHED
+  COMMENT
+  RISK_CORRECTED
+}
+
+enum EvidenceStage {
+  REPORT
+  FIX
+}
+
+enum EvidenceKind {
+  PHOTO
+  TEXT
+}
+
+enum SuggestionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+
+  reported  Incident[]      @relation("reporter")
+  assigned  Incident[]      @relation("assignee")
+  history   StatusHistory[]
+  events    IncidentEvent[]
+}
+
+model Campus {
+  id     String  @id @default(uuid())
+  code   String  @unique
+  name   String
+  blocks Block[]
+}
+
+model Block {
+  id       String  @id @default(uuid())
+  campusId String
+  code     String
+  name     String
+  posX     Float
+  posZ     Float
+  width    Float
+  depth    Float
+  floors   Int
+  rotation Float   @default(0)
+  campus   Campus  @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  spaces   Space[]
+
+  @@unique([campusId, code])
+}
+
+model Space {
+  id        String     @id @default(uuid())
+  blockId   String
+  code      String
+  name      String
+  floor     Int
+  type      SpaceType
+  capacity  Int
+  qrToken   String     @unique
+  localX    Float
+  localZ    Float
+  block     Block      @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  incidents Incident[]
+
+  @@unique([blockId, code])
+}
+
+model Incident {
+  id                String                       @id @default(uuid())
+  number            Int                          @unique @default(autoincrement())
+  description       String
+  descriptionNorm   String
+  category          Category
+  riskLevel         RiskLevel
+  spaceId           String
+  hotspotX          Float?
+  hotspotY          Float?
+  hotspotZ          Float?
+  reporterId        String
+  assigneeId        String?
+  status            IncidentStatus               @default(PENDING)
+  priorityScore     Float
+  priorityLevel     PriorityLevel
+  priorityBreakdown Json
+  escalationSteps   Int                          @default(0)
+  isOverdue         Boolean                      @default(false)
+  responseDueAt     DateTime
+  resolutionDueAt   DateTime
+  slaWarnedAt       DateTime?
+  clusterId         String?
+  isClusterPrimary  Boolean                      @default(true)
+  embedding         Unsupported("vector(384)")?
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+  stageStartedAt    DateTime                     @default(now())
+  firstResponseAt   DateTime?
+  resolvedAt        DateTime?
+  verifiedAt        DateTime?
+
+  space    Space            @relation(fields: [spaceId], references: [id])
+  reporter User             @relation("reporter", fields: [reporterId], references: [id])
+  assignee User?            @relation("assignee", fields: [assigneeId], references: [id])
+  cluster  IncidentCluster? @relation(fields: [clusterId], references: [id], onDelete: SetNull)
+  evidence Evidence[]
+  history  StatusHistory[]
+  events   IncidentEvent[]
+
+  @@index([status, priorityScore(sort: Desc)])
+  @@index([resolutionDueAt])
+  @@index([spaceId, status])
+  @@index([createdAt])
+  @@index([descriptionNorm(ops: raw("gin_trgm_ops"))], type: Gin)
+}
+
+model IncidentCluster {
+  id                String     @id @default(uuid())
+  primaryIncidentId String     @unique
+  spaceId           String
+  category          Category
+  reportsCount      Int        @default(1)
+  createdAt         DateTime   @default(now())
+  incidents         Incident[]
+}
+
+model GroupSuggestion {
+  id           String           @id @default(uuid())
+  incidentId   String
+  candidateId  String
+  score        Float
+  breakdown    Json
+  status       SuggestionStatus @default(PENDING)
+  resolvedById String?
+  createdAt    DateTime         @default(now())
+  resolvedAt   DateTime?
+
+  @@unique([incidentId, candidateId])
+  @@index([status])
+}
+
+model Evidence {
+  id         String        @id @default(uuid())
+  incidentId String
+  stage      EvidenceStage
+  kind       EvidenceKind
+  url        String?
+  text       String?
+  mime       String?
+  data       Bytes?
+  width      Int?
+  height     Int?
+  createdAt  DateTime      @default(now())
+  incident   Incident      @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId])
+}
+
+model StatusHistory {
+  id               String          @id @default(uuid())
+  incidentId       String
+  fromStatus       IncidentStatus?
+  toStatus         IncidentStatus
+  changedById      String?
+  changedAt        DateTime        @default(now())
+  durationInPrevMs Float?
+  reason           HistoryReason
+  note             String?
+  incident         Incident        @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  changedBy        User?           @relation(fields: [changedById], references: [id])
+
+  @@index([incidentId, changedAt])
+  @@index([changedAt])
+}
+
+model IncidentEvent {
+  id         String    @id @default(uuid())
+  incidentId String
+  type       EventType
+  payload    Json
+  actorId    String?
+  createdAt  DateTime  @default(now())
+  incident   Incident  @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  actor      User?     @relation(fields: [actorId], references: [id])
+
+  @@index([createdAt])
+  @@index([incidentId, createdAt])
+}

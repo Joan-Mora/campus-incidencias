@@ -1,0 +1,46 @@
+{
+  "name": "campus-incidencias",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c cyan,magenta \"npm run dev -w @campus/api\" \"npm run dev -w @campus/web\"",
+    "dev:phone": "concurrently -k -n api,web -c cyan,magenta \"npm run dev -w @campus/api\" \"npm run dev:https -w @campus/web\"",
+    "build": "npm run build -w @campus/web",
+    "start": "npm run start -w @campus/api",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:migrate": "npm run db:migrate -w @campus/api",
+    "db:deploy": "npm run db:deploy -w @campus/api",
+    "db:seed": "npm run db:seed -w @campus/api",
+    "db:seed:once": "npm run db:seed:once -w @campus/api",
+    "db:studio": "npm run db:studio -w @campus/api",
+    "db:reset": "npm run db:reset -w @campus/api",
+    "models": "node scripts/optimize-models.mjs",
+    "simulate": "npm run simulate -w @campus/api --",
+    "test": "vitest run",
+    "lint": "node scripts/check-no-emoji.mjs && eslint .",
+    "lint:emoji": "node scripts/check-no-emoji.mjs",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "format": "prettier --write .",
+    "prepare": "node scripts/setup-hooks.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.30.0",
+    "@gltf-transform/cli": "^4.2.0",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.30.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^16.3.0",
+    "prettier": "^3.6.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.35.0",
+    "vitest": "^3.2.4"
+  }
+}

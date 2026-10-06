@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#101a33"/>
+      <stop offset="1" stop-color="#060a14"/>
+    </linearGradient>
+    <linearGradient id="pulse" x1="10" y1="0" x2="54" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4f8cff"/>
+      <stop offset="1" stop-color="#ff5d6c"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#bg)"/>
+  <path d="M14 46V26l18-10 18 10v20" stroke="#c9d6f2" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M10 38h10l4-8 6 14 5-10 3 4h16" stroke="url(#pulse)" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="32" cy="24" r="2.6" fill="#ff5d6c"/>
+</svg>

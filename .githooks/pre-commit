@@ -1,0 +1,4 @@
+#!/bin/sh
+files=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$files" ] && exit 0
+node scripts/check-no-emoji.mjs --files $files
