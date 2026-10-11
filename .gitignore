@@ -9,3 +9,5 @@ apps/api/uploads/
 .DS_Store
 coverage/
 .vite/
+
+.cursor/
